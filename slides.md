@@ -83,7 +83,7 @@ flowchart TB
 
 # Effect 是什麼？
 
-一個 Effect 的型別涵蓋了三樣東西，結果、錯誤、需求資源，每個 Effect 都可以視為一個 program
+Effect 專門用來處理各式各樣的副作用（IO、錯誤、資源引用），一個 Effect 的型別涵蓋了三樣東西，結果、錯誤、需求資源，每個 Effect 都可以視為一個 program
 
 ```typescript
          ┌─── Produces a value of type number
@@ -100,8 +100,7 @@ const init = Effect.succeed(2)
 
 const double = (n: number) => Effect.succeed(n * 2)
 
-const program = ()=> init.pipe(Effect.flatMap(double), Effect.flatMap(double))
-
+const program = () => init.pipe(Effect.flatMap(double), Effect.flatMap(double))
 
 Effect.runPromise(program()).then(console.log)
 // > 8
@@ -110,6 +109,97 @@ Effect.runPromise(program()).then(console.log)
 --- 
 
 # 顯性的錯誤與處理
+
+Effect 在型別層面更加明確地表達可能錯誤的情況，而不像 Promise 只告知成功的執行結果
+
+````md magic-move
+```typescript
+import { Effect, Data } from "effect";
+
+class HttpError extends Data.TaggedError("HttpError") {}
+
+class ParseError extends Data.TaggedError("ParseError") {}
+
+const failWithHttpError = () => Effect.fail(new HttpError());
+const failWithParseError = () => Effect.fail(new ParseError());
+
+const program = () =>
+	Effect.succeed("").pipe(
+		Effect.flatMap(failWithHttpError),
+		Effect.flatMap(failWithParseError),
+	);
+
+Effect.runPromise(program());
+```
+
+```typescript
+import { Effect, Data } from "effect";
+
+class HttpError extends Data.TaggedError("HttpError") {}
+
+class ParseError extends Data.TaggedError("ParseError") {}
+
+const failWithHttpError = () => Effect.fail(new HttpError());
+const failWithParseError = () => Effect.fail(new ParseError());
+
+const program = () =>
+	Effect.succeed("").pipe(
+		Effect.flatMap(failWithHttpError),
+		Effect.flatMap(failWithParseError),
+        // 處理特定錯誤
+		Effect.catchTag("HttpError", () => Effect.succeed("HttpError")),
+	);
+
+Effect.runPromise(program());
+```
+
+```typescript
+import { Effect, Data } from "effect";
+
+class HttpError extends Data.TaggedError("HttpError") {}
+
+class ParseError extends Data.TaggedError("ParseError") {}
+
+const failWithHttpError = () => Effect.fail(new HttpError());
+const failWithParseError = () => Effect.fail(new ParseError());
+
+const program = () =>
+	Effect.succeed("").pipe(
+		Effect.flatMap(failWithHttpError),
+		Effect.flatMap(failWithParseError),
+		// 處理多個錯誤
+		Effect.catchTags({
+			HttpError: () => Effect.succeed("http error"),
+			ParseError: () => Effect.succeed("parse error"),
+		}),
+	);
+
+Effect.runPromise(program());
+```
+
+```typescript
+import { Effect, Data } from "effect";
+
+class HttpError extends Data.TaggedError("HttpError") {}
+
+class ParseError extends Data.TaggedError("ParseError") {}
+
+const failWithHttpError = () => Effect.fail(new HttpError());
+const failWithParseError = () => Effect.fail(new ParseError());
+
+const program = () =>
+	Effect.succeed("").pipe(
+		Effect.flatMap(failWithHttpError),
+		Effect.flatMap(failWithParseError),
+		// 統一處理所有錯誤
+		Effect.catchAll(() => Effect.succeed("fail")),
+	);
+
+Effect.runPromise(program());
+```
+````
+
+
 
 --- 
 
