@@ -199,17 +199,92 @@ Effect.runPromise(program());
 ```
 ````
 
-
-
 --- 
 
 # 資源的引用提示
+
+在 Effect-TS 共用資源的建立與取用會建議使用 `Context` module 來建立 interface，而 `Layer` 則是用來處理組合 `Context` 的實作與其之間的相依關係
+
+```ts twoslash
+import { Context, Effect, pipe } from "effect";
+
+class EnvContext extends Context.Tag("EnvContext")<
+	EnvContext,
+	{
+		apiKey: string;
+	}
+>() {}
+
+const program = pipe(
+	EnvContext,
+	Effect.flatMap(({ apiKey }) => Effect.succeed(apiKey)),
+);
+
+// 你沒有提供 EnvContext 的實作會直接從型別上提示你
+Effect.runPromise(program).then(console.log);
+```
+
+---
+
+# 提供實作以消除錯誤
+
+```ts {monaco}
+import { Context, Effect, pipe } from "effect";
+
+class EnvContext extends Context.Tag("EnvContext")<
+	EnvContext,
+	{
+		apiKey: string;
+	}
+>() {}
+
+const program = pipe(
+	EnvContext,
+	Effect.flatMap(({ apiKey }) => Effect.succeed(apiKey)),
+);
+
+const providedProgram = program.pipe(
+	Effect.provideService(EnvContext, { apiKey: "123" }),
+);
+
+Effect.runPromise(providedProgram).then(console.log);
+```
 
 ---
 
 # 前端不適合應用 Effect
 
+透過前面的範例或是在網路上看各種應用你會慢慢的發現使用 Effect 作為核心開發必然會影響整個專案思維及風格，不適合的點主要以下幾項
+
+- 功能及目的上更適合應用在後端開發
+- 前端所面臨的副作用前端框架已經處理掉了
+- 風格與前端主流函式庫不契合，需要作非常多的轉換動作
+- 學習曲線偏高
+
 ---
 
 # Effect-TS 標準函式庫的應用
 
+既然 Effect 不適合用於前端，那我們的關注點就會在標準函式庫的應用上了，主要優勢有幾點
+
+- 本身就是以函數式的思維進行建構，提供了很多好用的函式與功能
+  - function currying
+  - function composition (pipeline)
+  - pattern matching
+- 更強調型別的合理性及正確性，不再被 lodash, ramda 這類混亂邪惡的型別所困擾
+- 標準函式庫所涵蓋的功能可以涵蓋大部分場景
+
+---
+
+# 函數設計的基本思想
+
+---
+
+# pattern matching 的應用
+
+---
+
+# 缺點
+
+- 官方文件主要在展示想法及痛點，對 API 的講解並不全面
+- API 文件的範例稀少，大多得靠閱讀函數名稱或或者型別來推測功能
